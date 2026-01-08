@@ -6,39 +6,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Nordeste Locações - Câmera Pro</title>
     
-    <!-- PWA Meta Tags -->
+    <!-- PWA Nativo Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Nordeste Cam">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#0f172a">
     
-    <!-- Icons (Embedded for Offline Support) -->
+    <!-- Evitar zoom indesejado e scroll elástico -->
+    <style>
+        :root {
+            --sat: env(safe-area-inset-top);
+            --sar: env(safe-area-inset-right);
+            --sab: env(safe-area-inset-bottom);
+            --sal: env(safe-area-inset-left);
+        }
+        html, body {
+            position: fixed;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            background-color: #0f172a;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+        #root {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+
+    <!-- Icons -->
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='120' fill='%232563eb'/%3E%3Cpath d='M144 160c-26.5 0-48 21.5-48 48v160c0 26.5 21.5 48 48 48h224c26.5 0 48-21.5 48-48V208c0-26.5-21.5-48-48-48h-41.4l-14.6-29.3c-7.3-14.5-22.3-22.7-38-22.7H233.9c-15.7 0-30.7 8.2-38 22.7l-14.6 29.3H144zM256 368c-44.2 0-80-35.8-80-80s35.8-80 80-80 80 35.8 80 80-35.8 80-80 80z' fill='%23fff'/%3E%3C/svg%3E">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='120' fill='%232563eb'/%3E%3Cpath d='M144 160c-26.5 0-48 21.5-48 48v160c0 26.5 21.5 48 48 48h224c26.5 0 48-21.5 48-48V208c0-26.5-21.5-48-48-48h-41.4l-14.6-29.3c-7.3-14.5-22.3-22.7-38-22.7H233.9c-15.7 0-30.7 8.2-38 22.7l-14.6 29.3H144zM256 368c-44.2 0-80-35.8-80-80s35.8-80 80-80 80 35.8 80 80-35.8 80-80 80z' fill='%23fff'/%3E%3C/svg%3E">
     
     <link rel="manifest" href="manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <style>
-        body {
-            overscroll-behavior-y: contain;
-            background-color: #0f172a;
-            color: #f8fafc;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-            margin: 0;
-            padding: 0;
-        }
-        canvas {
-            display: none;
-        }
-        /* Garantir altura total em dispositivos móveis */
-        .h-screen-safe {
-            height: 100vh;
-            height: -webkit-fill-available;
-        }
-    </style>
 <script type="importmap">
 {
   "imports": {
@@ -52,7 +60,7 @@
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-<body class="h-screen-safe overflow-hidden">
+<body>
     <div id="root"></div>
 <script type="module" src="/index.tsx"></script>
 </body>

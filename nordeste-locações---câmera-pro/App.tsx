@@ -6,7 +6,7 @@ import CustomModal from './components/CustomModal';
 import { getCurrentLocation } from './services/locationService';
 import { processImage, reprocessWithPatrimonio } from './services/imageProcessor';
 import { LocationData, StampedImage, InspectionSession } from './types';
-import { Loader2, FolderClosed, History, Trash2, X, Camera, User, Download, Info } from 'lucide-react';
+import { Loader2, FolderClosed, History, Trash2, X, Camera, User, Download, Smartphone, Share, PlusSquare } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
@@ -16,28 +16,28 @@ const App: React.FC = () => {
   const [showGallery, setShowGallery] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
+  
+  // Estados para Instalação PWA
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [showInstallOverlay, setShowInstallOverlay] = useState(false);
 
   const [isPatrimonioModalOpen, setIsPatrimonioModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Detectar se já está instalado ou rodando como PWA
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
+    // Verifica se está rodando como APP (Standalone)
+    const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    setIsStandalone(checkStandalone);
+
+    // Se NÃO estiver em modo app, mostramos o overlay de instalação após 2 segundos
+    if (!checkStandalone) {
+      setTimeout(() => setShowInstallOverlay(true), 1500);
     }
 
-    // Escutar o evento de instalação
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
-    });
-
-    window.addEventListener('appinstalled', () => {
-      setDeferredPrompt(null);
-      setIsInstalled(true);
-      console.log('PWA instalado com sucesso!');
     });
 
     const update = async () => setCurrentLocation(await getCurrentLocation());
@@ -47,11 +47,13 @@ const App: React.FC = () => {
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        setShowInstallOverlay(false);
+      }
     }
   };
 
@@ -123,15 +125,50 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDeleteConfirmed = () => {
-    if (deleteId) {
-      setArchivedSessions(prev => prev.filter(s => s.id !== deleteId));
-      setDeleteId(null);
-    }
-  };
-
   return (
-    <div className="flex flex-col h-full bg-slate-950 select-none text-white">
+    <div className="flex flex-col h-full bg-slate-950 select-none text-white overflow-hidden">
+      {/* OVERLAY DE INSTALAÇÃO OBRIGATÓRIO (Apenas se não estiver instalado) */}
+      {showInstallOverlay && (
+        <div className="fixed inset-0 z-[500] bg-slate-950 p-8 flex flex-col items-center justify-center text-center animate-in fade-in duration-500">
+           <div className="w-24 h-24 bg-blue-600 rounded-[2rem] shadow-2xl flex items-center justify-center mb-8 animate-bounce">
+              <Smartphone size={48} />
+           </div>
+           <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-4">Instale o App</h2>
+           <p className="text-slate-400 mb-10 text-sm leading-relaxed max-w-xs">
+             Para remover as barras do navegador e usar a câmera em tela cheia, instale o aplicativo na sua tela de início.
+           </p>
+
+           {deferredPrompt ? (
+             /* Botão para Android / Chrome Desktop */
+             <button 
+               onClick={handleInstallClick}
+               className="w-full py-6 bg-blue-600 rounded-3xl font-black text-xl uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+             >
+               Instalar Agora
+             </button>
+           ) : (
+             /* Instrução Manual para iOS */
+             <div className="w-full bg-slate-900 border border-white/5 p-6 rounded-[2.5rem] space-y-6 text-left">
+                <div className="flex items-center gap-4">
+                  <div className="bg-white/10 p-3 rounded-xl text-blue-500"><Share size={24}/></div>
+                  <p className="text-xs font-bold uppercase tracking-tight">1. Toque em "Compartilhar"</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="bg-white/10 p-3 rounded-xl text-blue-500"><PlusSquare size={24}/></div>
+                  <p className="text-xs font-bold uppercase tracking-tight">2. Toque em "Adicionar à Tela de Início"</p>
+                </div>
+             </div>
+           )}
+
+           <button 
+             onClick={() => setShowInstallOverlay(false)}
+             className="mt-10 text-slate-500 font-bold uppercase text-[10px] tracking-[0.3em] underline"
+           >
+             Continuar no Navegador (Não recomendado)
+           </button>
+        </div>
+      )}
+
       {showIntro ? (
         <div className="fixed inset-0 bg-slate-950 z-[100] flex flex-col p-10 pt-24 items-center text-center overflow-y-auto">
           <div className="w-32 h-32 mb-10 bg-blue-600 rounded-[2.5rem] shadow-[0_20px_50px_rgba(37,99,235,0.3)] flex items-center justify-center shrink-0">
@@ -155,39 +192,6 @@ const App: React.FC = () => {
               <History size={20}/> Histórico
             </button>
           </div>
-
-          {/* Prompt de Instalação na Tela Inicial */}
-          {deferredPrompt && (
-            <div className="w-full bg-blue-500/10 border border-blue-500/20 p-6 rounded-[2rem] animate-in fade-in zoom-in duration-500">
-               <div className="flex items-center gap-4 mb-4 text-left">
-                 <div className="bg-blue-600 p-3 rounded-2xl">
-                    <Download size={24} className="text-white" />
-                 </div>
-                 <div>
-                   <h4 className="font-black text-sm uppercase italic tracking-tight">Instalar Aplicativo</h4>
-                   <p className="text-slate-400 text-[10px] leading-tight mt-1">Acesse a câmera mais rápido e use offline.</p>
-                 </div>
-               </div>
-               <button 
-                onClick={handleInstallClick}
-                className="w-full py-4 bg-white text-blue-600 font-black rounded-2xl text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all"
-               >
-                 Instalar Agora
-               </button>
-            </div>
-          )}
-
-          {/* Dica para iOS */}
-          {!deferredPrompt && !isInstalled && /iPhone|iPad|iPod/i.test(navigator.userAgent) && (
-             <div className="w-full bg-slate-900 border border-white/5 p-5 rounded-[2rem] flex items-center gap-4">
-                <div className="bg-white/5 p-3 rounded-2xl text-blue-500">
-                  <Info size={20} />
-                </div>
-                <p className="text-[10px] text-slate-400 text-left leading-relaxed">
-                   Para instalar no iOS: toque em <span className="text-white font-bold">Compartilhar</span> e depois em <span className="text-white font-bold">Adicionar à Tela de Início</span>.
-                </p>
-             </div>
-          )}
         </div>
       ) : (
         <>
@@ -203,21 +207,10 @@ const App: React.FC = () => {
 
           <button 
             onClick={() => setShowHistory(true)}
-            className="absolute top-12 right-6 p-5 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 text-white shadow-2xl active:scale-90 transition-transform"
+            className="absolute top-16 right-6 p-5 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 text-white shadow-2xl active:scale-90 transition-transform"
           >
             <History size={32} />
           </button>
-          
-          {/* Pequeno Banner de Instalação Flutuante se estiver na câmera */}
-          {deferredPrompt && !showGallery && (
-             <button 
-              onClick={handleInstallClick}
-              className="absolute top-12 left-1/2 -translate-x-1/2 px-6 py-3 bg-blue-600/90 backdrop-blur-md rounded-full border border-white/20 flex items-center gap-3 animate-in slide-in-from-top duration-500 shadow-2xl active:scale-95"
-             >
-                <Download size={18} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Instalar App</span>
-             </button>
-          )}
         </>
       )}
 
@@ -240,70 +233,33 @@ const App: React.FC = () => {
         confirmText="Gerar Relatório"
       />
 
-      <CustomModal
-        isOpen={!!deleteId}
-        onClose={() => setDeleteId(null)}
-        onConfirm={handleDeleteConfirmed}
-        title="Excluir?"
-        message="O registro será removido permanentemente."
-        confirmText="Sim, Excluir"
-      />
-
       {showHistory && (
         <div className="fixed inset-0 z-[160] bg-slate-950 flex flex-col">
-          <div className="pt-12 p-6 flex justify-between items-center bg-slate-900 border-b border-white/5">
+          <div className="pt-16 p-6 flex justify-between items-center bg-slate-900 border-b border-white/5">
             <h2 className="font-black text-white uppercase italic tracking-tighter">Histórico</h2>
             <button onClick={() => setShowHistory(false)} className="p-4 bg-white/5 rounded-2xl active:scale-90 transition-transform"><X/></button>
           </div>
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {archivedSessions.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-800">
-                <FolderClosed size={100} className="mb-6 opacity-20" />
-                <p className="font-black uppercase tracking-widest text-xs italic">Nenhum registro</p>
-              </div>
-            ) : (
-              archivedSessions.map(session => (
-                <div key={session.id} className="bg-slate-900 rounded-[2rem] p-6 border border-white/5 shadow-2xl">
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <h3 className="font-black text-2xl text-blue-500 italic tracking-tighter uppercase">{session.patrimonio}</h3>
-                      <div className="flex items-center gap-2 text-slate-400 mt-1">
-                        <User size={14} />
-                        <span className="text-xs font-black uppercase tracking-tight">{session.cliente}</span>
-                      </div>
-                    </div>
-                    <button onClick={() => setDeleteId(session.id)} className="p-4 text-red-500 bg-red-500/10 rounded-2xl active:scale-90 transition-transform">
-                      <Trash2 size={24}/>
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {session.images.slice(0, 4).map(img => (
-                      <img key={img.id} src={img.url} className="aspect-square object-cover rounded-xl border border-white/10" alt="prev" />
-                    ))}
-                  </div>
-                  <div className="mt-6 flex justify-between items-center border-t border-white/5 pt-5">
-                    <span className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">{session.images.length} IMAGENS</span>
-                    <div className="flex items-center gap-2 text-green-500 bg-green-500/10 px-3 py-1.5 rounded-xl">
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-[10px] font-black uppercase tracking-widest">Salvo</span>
-                    </div>
-                  </div>
+            {archivedSessions.map(session => (
+              <div key={session.id} className="bg-slate-900 rounded-[2rem] p-6 border border-white/5">
+                <h3 className="font-black text-2xl text-blue-500 italic uppercase">{session.patrimonio}</h3>
+                <p className="text-slate-400 text-xs mt-1 uppercase font-bold">{session.cliente}</p>
+                <div className="grid grid-cols-4 gap-2 mt-4">
+                  {session.images.slice(0, 4).map(img => (
+                    <img key={img.id} src={img.url} className="aspect-square object-cover rounded-xl border border-white/10" />
+                  ))}
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
         </div>
       )}
 
       {isProcessing && (
         <div className="fixed inset-0 z-[400] bg-black/95 backdrop-blur-2xl flex items-center justify-center">
-          <div className="flex flex-col items-center p-10">
-            <div className="relative mb-10">
-               <Loader2 className="w-24 h-24 text-blue-600 animate-spin" strokeWidth={3} />
-               <div className="absolute inset-0 flex items-center justify-center font-black italic text-xs">PRO</div>
-            </div>
-            <p className="font-black text-3xl uppercase italic tracking-tighter">Processando</p>
-            <p className="text-slate-500 text-xs mt-4 font-black uppercase tracking-[0.3em] animate-pulse">Carimbando e Exportando...</p>
+          <div className="flex flex-col items-center">
+            <Loader2 className="w-20 h-20 text-blue-600 animate-spin mb-6" strokeWidth={3} />
+            <p className="font-black text-2xl uppercase italic tracking-tighter">Processando...</p>
           </div>
         </div>
       )}
