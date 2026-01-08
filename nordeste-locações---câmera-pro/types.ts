@@ -14,11 +14,13 @@ export interface StampedImage {
   timestamp: number;
   location: LocationData;
   patrimonio?: string;
+  cliente?: string;
 }
 
 export interface InspectionSession {
   id: string;
   patrimonio: string;
+  cliente: string;
   date: number;
   images: StampedImage[];
   isFinalized: boolean;

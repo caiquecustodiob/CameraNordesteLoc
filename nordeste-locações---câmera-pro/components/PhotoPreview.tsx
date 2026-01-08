@@ -24,14 +24,11 @@ const PhotoPreview: React.FC<PhotoPreviewProps> = ({ images, onClose, onDeleteIm
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
-        // Pequeno atraso para não sobrecarregar o gerenciador de downloads do navegador
         if (images.length > 1) {
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise(resolve => setTimeout(resolve, 400));
         }
       }
     } catch (err) {
-      console.error('Download Error:', err);
       alert('Erro ao baixar imagens.');
     } finally {
       setIsDownloading(false);
@@ -49,77 +46,76 @@ const PhotoPreview: React.FC<PhotoPreviewProps> = ({ images, onClose, onDeleteIm
           title: 'Vistorias Nordeste Locações',
           text: `Registro de ${images.length} fotos.`
         });
-      } catch (err) {
-        console.error('Sharing failed:', err);
-      }
+      } catch (err) {}
     } else {
-      alert('Compartilhamento múltiplo não disponível neste navegador.');
+      alert('Compartilhamento não disponível.');
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col">
-      {/* Header */}
-      <div className="p-4 flex justify-between items-center bg-slate-900/80 backdrop-blur-md border-b border-white/5">
-        <button onClick={onClose} className="p-2 rounded-full bg-white/10 text-white">
-          <X size={24} />
+    <div className="fixed inset-0 z-[150] bg-slate-950 flex flex-col">
+      {/* Header Mobile Otimizado */}
+      <div className="pt-12 p-6 flex justify-between items-center bg-slate-900 border-b border-white/5">
+        <button onClick={onClose} className="p-4 rounded-2xl bg-white/5 text-white active:scale-90 transition-transform">
+          <X size={28} />
         </button>
-        <div className="flex flex-col items-center">
-          <span className="font-bold text-slate-200">Sessão de Vistoria</span>
-          <span className="text-[10px] text-slate-400 uppercase tracking-widest">{images.length} Fotos Capturadas</span>
+        <div className="text-center">
+          <span className="block font-black text-white italic tracking-tighter uppercase">Galeria</span>
+          <span className="text-[10px] text-blue-500 font-black uppercase tracking-widest">{images.length} FOTOS</span>
         </div>
-        <button onClick={onClearAll} className="p-2 rounded-full bg-red-500/20 text-red-400" title="Limpar Tudo">
-          <Trash2 size={24} />
+        <button onClick={onClearAll} className="p-4 rounded-2xl bg-red-500/10 text-red-500 active:scale-90 transition-transform">
+          <Trash2 size={28} />
         </button>
       </div>
 
-      {/* Grid Display */}
-      <div className="flex-1 overflow-y-auto p-4 bg-slate-950">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      {/* Grid com visualização maior */}
+      <div className="flex-1 overflow-y-auto p-6 bg-slate-950">
+        <div className="grid grid-cols-2 gap-4">
           {images.map((image) => (
-            <div key={image.id} className="relative aspect-square group">
+            <div key={image.id} className="relative aspect-[3/4] group">
               <img 
                 src={image.url} 
                 alt="Captured" 
-                className="w-full h-full object-cover rounded-xl border border-white/10"
+                className="w-full h-full object-cover rounded-[2rem] border-2 border-white/10"
               />
               <button 
                 onClick={() => onDeleteImage(image.id)}
-                className="absolute top-2 right-2 p-1.5 bg-black/60 backdrop-blur-sm rounded-lg text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-3 right-3 p-3 bg-black/60 backdrop-blur-md rounded-2xl text-red-400 border border-white/10 active:scale-75 transition-transform"
               >
-                <X size={16} />
+                <X size={20} />
               </button>
             </div>
           ))}
         </div>
         
         {images.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-slate-500">
-             <Archive size={48} className="mb-4 opacity-20" />
-             <p>Nenhuma foto capturada</p>
+          <div className="h-full flex flex-col items-center justify-center text-slate-700">
+             <Archive size={80} className="mb-6 opacity-10" />
+             <p className="font-black uppercase tracking-widest text-sm italic">Sessão vazia</p>
           </div>
         )}
       </div>
 
-      {/* Footer Controls */}
-      <div className="p-6 grid grid-cols-2 gap-4 bg-slate-900/80 backdrop-blur-md border-t border-white/5">
-        <button 
-          onClick={handleDownloadAll}
-          disabled={images.length === 0 || isDownloading}
-          className="flex flex-col items-center justify-center gap-1 py-3 px-4 bg-slate-800 rounded-2xl font-bold text-white border border-white/10 hover:bg-slate-700 active:scale-95 transition-all disabled:opacity-50"
-        >
-          {isDownloading ? (
-            <Loader2 size={20} className="animate-spin" />
-          ) : <Download size={20} />}
-          <span className="text-xs">Baixar Fotos</span>
-        </button>
+      {/* Footer Ações Grandes */}
+      <div className="p-8 pb-12 flex flex-col gap-4 bg-slate-900 border-t border-white/5">
         <button 
           onClick={handleShareBatch}
           disabled={images.length === 0}
-          className="flex flex-col items-center justify-center gap-1 py-3 px-4 bg-blue-600 rounded-2xl font-bold text-white hover:bg-blue-500 active:scale-95 transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-4 py-5 bg-blue-600 rounded-3xl font-black text-lg text-white shadow-2xl shadow-blue-600/30 active:scale-95 transition-all disabled:opacity-30"
         >
-          <Share size={20} />
-          <span className="text-xs">Compartilhar</span>
+          <Share size={24} />
+          COMPARTILHAR TUDO
+        </button>
+        
+        <button 
+          onClick={handleDownloadAll}
+          disabled={images.length === 0 || isDownloading}
+          className="w-full flex items-center justify-center gap-4 py-5 bg-slate-800 rounded-3xl font-black text-lg text-white border border-white/5 active:scale-95 transition-all disabled:opacity-30"
+        >
+          {isDownloading ? (
+            <Loader2 size={24} className="animate-spin" />
+          ) : <Download size={24} />}
+          BAIXAR IMAGENS
         </button>
       </div>
     </div>
