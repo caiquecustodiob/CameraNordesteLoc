@@ -1,49 +1,54 @@
 
-const CACHE_NAME = 'nordeste-cam-v1';
-const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  'https://cdn.tailwindcss.com',
-  'https://nordesteloc.com.br/wp-content/uploads/2024/01/logo-nordeste-white.svg'
+const CACHE_NAME = 'nordeste-pro-cache-v1';
+const ASSETS_TO_CACHE = [
+  './',
+  './index.html',
+  './manifest.json',
+  './index.tsx'
 ];
 
-// Instalação do Service Worker
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
+      // Usamos paths relativos para que funcione em qualquer subdomínio da Vercel
+      return cache.addAll(ASSETS_TO_CACHE);
     })
   );
   self.skipWaiting();
 });
 
-// Ativação e limpeza de caches antigos
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      );
-    })
+    caches.keys().then((keys) => Promise.all(
+      keys.map((key) => {
+        if (key !== CACHE_NAME) return caches.delete(key);
+      })
+    ))
   );
   self.clients.claim();
 });
 
-// Estratégia Stale-While-Revalidate para recursos
+// Estratégia Stale-While-Revalidate: Rápido e sempre atualizado
 self.addEventListener('fetch', (event) => {
+  if (!event.request.url.startsWith('http')) return;
+  
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, networkResponse.clone());
-        });
+        // Apenas faz o cache se a resposta for válida
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
         return networkResponse;
+      }).catch(() => {
+        // Silencia erros de rede (offline)
+        return null;
       });
+
       return cachedResponse || fetchPromise;
-    }).catch(() => {
-        // Fallback caso não encontre no cache e esteja sem rede
-        return caches.match('/');
     })
   );
 });

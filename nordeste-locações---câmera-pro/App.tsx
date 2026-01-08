@@ -6,7 +6,7 @@ import CustomModal from './components/CustomModal';
 import { getCurrentLocation } from './services/locationService';
 import { processImage, reprocessWithPatrimonio } from './services/imageProcessor';
 import { LocationData, StampedImage, InspectionSession } from './types';
-import { Loader2, FolderClosed, History, Trash2, X, Camera, User, Download, Smartphone, Share, PlusSquare } from 'lucide-react';
+import { Loader2, History, X, Camera, Smartphone, Share, PlusSquare, Menu, Download, ShieldCheck, Database, MapPin } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
@@ -17,43 +17,57 @@ const App: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
   
-  // Estados para Instalação PWA
+  // PWA & Permissions
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState(false);
-  const [showInstallOverlay, setShowInstallOverlay] = useState(false);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [storagePermission, setStoragePermission] = useState<'default' | 'granted'>('default');
 
   const [isPatrimonioModalOpen, setIsPatrimonioModalOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Verifica se está rodando como APP (Standalone)
-    const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    // Detect Standalone
+    const checkStandalone = 
+      window.matchMedia('(display-mode: standalone)').matches || 
+      (window.navigator as any).standalone === true;
     setIsStandalone(checkStandalone);
 
-    // Se NÃO estiver em modo app, mostramos o overlay de instalação após 2 segundos
-    if (!checkStandalone) {
-      setTimeout(() => setShowInstallOverlay(true), 1500);
-    }
-
-    window.addEventListener('beforeinstallprompt', (e) => {
+    // Capture Install Prompt
+    const handleBeforeInstall = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-    });
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
 
-    const update = async () => setCurrentLocation(await getCurrentLocation());
-    update();
-    const interval = setInterval(update, 30000);
-    return () => clearInterval(interval);
+    // Check Storage Persistence status
+    if (navigator.storage && navigator.storage.persisted) {
+      navigator.storage.persisted().then(persisted => {
+        if (persisted) setStoragePermission('granted');
+      });
+    }
+
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
 
-  const handleInstallClick = async () => {
+  const requestStoragePermission = async () => {
+    if (navigator.storage && navigator.storage.persist) {
+      const isPersisted = await navigator.storage.persist();
+      if (isPersisted) {
+        setStoragePermission('granted');
+        alert('Armazenamento configurado como permanente!');
+      } else {
+        alert('O sistema negou a permanência automática, mas o app continuará funcionando.');
+      }
+    }
+  };
+
+  const handleInstallAction = async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
-        setShowInstallOverlay(false);
-      }
+      if (outcome === 'accepted') setDeferredPrompt(null);
+    } else {
+      setShowInstallGuide(true);
     }
   };
 
@@ -72,146 +86,142 @@ const App: React.FC = () => {
       };
       setCapturedImages(prev => [newImg, ...prev]);
     } catch (e: any) {
-      alert(e.message || 'Erro na captura.');
+      alert('Erro: ' + e.message);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleFinalizeVistoria = (data?: { patrimonio: string, cliente: string }) => {
+  const finalizeVistoria = (data?: { patrimonio: string, cliente: string }) => {
     setIsPatrimonioModalOpen(false);
-    if (!data || !data.patrimonio.trim() || !data.cliente.trim()) {
-      alert('Preencha todos os campos.');
+    if (!data?.patrimonio || !data?.cliente) {
+      alert('Informe os dados.');
       return;
     }
-    finalizeWithInfo(data.patrimonio.trim(), data.cliente.trim());
+    executeFinalization(data.patrimonio, data.cliente);
   };
 
-  const finalizeWithInfo = async (patrimonio: string, cliente: string) => {
+  const executeFinalization = async (patrimonio: string, cliente: string) => {
     setIsProcessing(true);
     try {
-      const finalizedImages: StampedImage[] = [];
-      const safeClienteName = cliente.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-
+      const safeName = cliente.replace(/\s+/g, '_').toLowerCase();
       for (let i = 0; i < capturedImages.length; i++) {
-        const img = capturedImages[i];
-        const reprocessed = await reprocessWithPatrimonio(img, patrimonio, cliente);
-        finalizedImages.push(reprocessed);
-
-        const link = document.createElement('a');
-        link.href = reprocessed.url;
-        link.download = `${patrimonio}_${safeClienteName}_${i + 1}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        const reprocessed = await reprocessWithPatrimonio(capturedImages[i], patrimonio, cliente);
+        const a = document.createElement('a');
+        a.href = reprocessed.url;
+        a.download = `VISTORIA_${patrimonio}_${safeName}_${i+1}.jpg`;
+        a.click();
+        await new Promise(r => setTimeout(r, 600));
       }
-
-      const session: InspectionSession = {
-        id: Date.now().toString(),
-        patrimonio,
-        cliente,
-        date: Date.now(),
-        images: finalizedImages,
-        isFinalized: true
-      };
-      setArchivedSessions(prev => [session, ...prev]);
       setCapturedImages([]);
       setShowGallery(false);
-    } catch (e: any) {
-      alert('Erro ao processar imagens.');
     } finally {
       setIsProcessing(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 select-none text-white overflow-hidden">
-      {/* OVERLAY DE INSTALAÇÃO OBRIGATÓRIO (Apenas se não estiver instalado) */}
-      {showInstallOverlay && (
-        <div className="fixed inset-0 z-[500] bg-slate-950 p-8 flex flex-col items-center justify-center text-center animate-in fade-in duration-500">
-           <div className="w-24 h-24 bg-blue-600 rounded-[2rem] shadow-2xl flex items-center justify-center mb-8 animate-bounce">
-              <Smartphone size={48} />
-           </div>
-           <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-4">Instale o App</h2>
-           <p className="text-slate-400 mb-10 text-sm leading-relaxed max-w-xs">
-             Para remover as barras do navegador e usar a câmera em tela cheia, instale o aplicativo na sua tela de início.
-           </p>
-
-           {deferredPrompt ? (
-             /* Botão para Android / Chrome Desktop */
-             <button 
-               onClick={handleInstallClick}
-               className="w-full py-6 bg-blue-600 rounded-3xl font-black text-xl uppercase tracking-widest shadow-xl active:scale-95 transition-all"
-             >
-               Instalar Agora
-             </button>
-           ) : (
-             /* Instrução Manual para iOS */
-             <div className="w-full bg-slate-900 border border-white/5 p-6 rounded-[2.5rem] space-y-6 text-left">
-                <div className="flex items-center gap-4">
-                  <div className="bg-white/10 p-3 rounded-xl text-blue-500"><Share size={24}/></div>
-                  <p className="text-xs font-bold uppercase tracking-tight">1. Toque em "Compartilhar"</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="bg-white/10 p-3 rounded-xl text-blue-500"><PlusSquare size={24}/></div>
-                  <p className="text-xs font-bold uppercase tracking-tight">2. Toque em "Adicionar à Tela de Início"</p>
-                </div>
-             </div>
-           )}
-
-           <button 
-             onClick={() => setShowInstallOverlay(false)}
-             className="mt-10 text-slate-500 font-bold uppercase text-[10px] tracking-[0.3em] underline"
-           >
-             Continuar no Navegador (Não recomendado)
-           </button>
-        </div>
-      )}
-
+    <div className="flex flex-col h-full bg-slate-950 text-white overflow-hidden">
       {showIntro ? (
-        <div className="fixed inset-0 bg-slate-950 z-[100] flex flex-col p-10 pt-24 items-center text-center overflow-y-auto">
-          <div className="w-32 h-32 mb-10 bg-blue-600 rounded-[2.5rem] shadow-[0_20px_50px_rgba(37,99,235,0.3)] flex items-center justify-center shrink-0">
-            <Camera size={64} className="text-white" />
+        <div className="fixed inset-0 bg-slate-950 z-[100] flex flex-col items-center p-6 pt-16 overflow-y-auto">
+          {/* Logo Section */}
+          <div className="w-24 h-24 mb-6 bg-blue-600 rounded-[2rem] shadow-2xl flex items-center justify-center animate-in zoom-in duration-500">
+            <Camera size={48} />
           </div>
-          <h1 className="text-4xl font-black mb-3 uppercase tracking-tighter italic">Nordeste</h1>
-          <p className="text-slate-500 mb-12 text-xs font-black uppercase tracking-[0.3em]">Câmera Pro de Vistoria</p>
-          
-          <div className="w-full space-y-4 mb-12">
-            <button 
-              onClick={() => setShowIntro(false)} 
-              className="w-full py-6 px-10 bg-blue-600 font-black rounded-3xl shadow-2xl active:scale-95 transition-all text-xl uppercase tracking-tighter"
-            >
-              Nova Vistoria
-            </button>
-            
-            <button 
-              onClick={() => setShowHistory(true)} 
-              className="w-full py-5 bg-slate-900 border border-white/5 text-slate-300 flex items-center justify-center gap-3 rounded-3xl font-black uppercase text-sm tracking-widest active:scale-95 transition-all"
-            >
-              <History size={20}/> Histórico
-            </button>
+          <h1 className="text-3xl font-black mb-1 uppercase italic tracking-tighter">Nordeste Pro</h1>
+          <p className="text-slate-500 mb-10 text-[10px] font-black uppercase tracking-[0.4em]">Câmera de Vistoria</p>
+
+          <div className="w-full max-w-sm space-y-4">
+            {/* Status de Permissões */}
+            <div className="bg-slate-900/50 border border-white/5 rounded-3xl p-6 space-y-4">
+              <h2 className="text-[11px] font-black uppercase text-slate-500 tracking-widest mb-2">Configuração do Dispositivo</h2>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Database size={18} className={storagePermission === 'granted' ? 'text-green-500' : 'text-slate-600'} />
+                  <span className="text-xs font-bold">Armazenamento Offline</span>
+                </div>
+                {storagePermission !== 'granted' ? (
+                  <button onClick={requestStoragePermission} className="text-[10px] bg-blue-600 px-3 py-1.5 rounded-lg font-black uppercase">Permitir</button>
+                ) : (
+                  <ShieldCheck size={18} className="text-green-500" />
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <MapPin size={18} className="text-green-500" />
+                  <span className="text-xs font-bold">Localização GPS</span>
+                </div>
+                <ShieldCheck size={18} className="text-green-500" />
+              </div>
+            </div>
+
+            {/* Ações Principais */}
+            <div className="space-y-4 pt-4">
+              {!isStandalone && (
+                <button 
+                  onClick={handleInstallAction}
+                  className="w-full py-6 bg-white text-blue-600 font-black rounded-3xl shadow-xl active:scale-95 transition-all text-lg uppercase italic tracking-tighter flex items-center justify-center gap-3"
+                >
+                  <Download size={24} strokeWidth={3} />
+                  Baixar Aplicativo
+                </button>
+              )}
+
+              <button 
+                onClick={() => setShowIntro(false)} 
+                className="w-full py-6 bg-blue-600 font-black rounded-3xl shadow-lg active:scale-95 transition-all text-lg uppercase italic tracking-tighter"
+              >
+                Abrir Câmera
+              </button>
+              
+              <button 
+                onClick={() => setShowHistory(true)} 
+                className="w-full py-4 bg-slate-900/50 text-slate-400 flex items-center justify-center gap-3 rounded-2xl font-black uppercase text-xs"
+              >
+                <History size={16}/> Histórico
+              </button>
+            </div>
           </div>
+
+          <p className="mt-10 text-[9px] text-slate-600 uppercase font-black text-center max-w-[200px] leading-relaxed">
+            Desenvolvido para uso exclusivo de colaboradores da Nordeste Locações.
+          </p>
         </div>
       ) : (
-        <>
-          <CameraView 
-            onCapture={handleCapture} 
-            isProcessing={isProcessing}
-            locationError={currentLocation?.error || null}
-            capturedCount={capturedImages.length}
-            lastPhotoUrl={capturedImages[0]?.url || null}
-            onOpenGallery={() => setShowGallery(true)}
-            onFinalize={() => setIsPatrimonioModalOpen(true)}
-          />
+        <CameraView 
+          onCapture={handleCapture} 
+          isProcessing={isProcessing}
+          locationError={currentLocation?.error || null}
+          capturedCount={capturedImages.length}
+          lastPhotoUrl={capturedImages[0]?.url || null}
+          onOpenGallery={() => setShowGallery(true)}
+          onFinalize={() => setIsPatrimonioModalOpen(true)}
+        />
+      )}
 
-          <button 
-            onClick={() => setShowHistory(true)}
-            className="absolute top-16 right-6 p-5 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 text-white shadow-2xl active:scale-90 transition-transform"
-          >
-            <History size={32} />
-          </button>
-        </>
+      {/* Guia Visual iOS */}
+      {showInstallGuide && (
+        <div className="fixed inset-0 z-[500] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6" onClick={() => setShowInstallGuide(false)}>
+           <div className="w-full max-w-xs bg-slate-900 border border-white/10 rounded-[3rem] p-8 text-center animate-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
+              <div className="w-16 h-16 bg-blue-600 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+                 <Smartphone size={32} />
+              </div>
+              <h3 className="text-xl font-black uppercase italic mb-6">Instalar no iPhone</h3>
+              <div className="space-y-6 text-left mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-white/5 rounded-xl"><Share size={20} className="text-blue-500"/></div>
+                  <p className="text-[10px] font-black uppercase tracking-tight">1. Toque em "Compartilhar"</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-white/5 rounded-xl"><PlusSquare size={20} className="text-blue-500"/></div>
+                  <p className="text-[10px] font-black uppercase tracking-tight">2. "Adicionar à Tela de Início"</p>
+                </div>
+              </div>
+              <button onClick={() => setShowInstallGuide(false)} className="w-full py-4 bg-blue-600 rounded-2xl font-black text-xs uppercase">Entendi</button>
+           </div>
+        </div>
       )}
 
       {showGallery && (
@@ -226,41 +236,17 @@ const App: React.FC = () => {
       <CustomModal
         isOpen={isPatrimonioModalOpen}
         onClose={() => setIsPatrimonioModalOpen(false)}
-        onConfirm={handleFinalizeVistoria}
-        title="Identificação"
-        message="Dados obrigatórios para o carimbo."
+        onConfirm={finalizeVistoria}
+        title="Finalizar"
+        message="Confirme os dados para o carimbo."
         showInput={true}
-        confirmText="Gerar Relatório"
+        confirmText="Gerar Arquivos"
       />
 
-      {showHistory && (
-        <div className="fixed inset-0 z-[160] bg-slate-950 flex flex-col">
-          <div className="pt-16 p-6 flex justify-between items-center bg-slate-900 border-b border-white/5">
-            <h2 className="font-black text-white uppercase italic tracking-tighter">Histórico</h2>
-            <button onClick={() => setShowHistory(false)} className="p-4 bg-white/5 rounded-2xl active:scale-90 transition-transform"><X/></button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {archivedSessions.map(session => (
-              <div key={session.id} className="bg-slate-900 rounded-[2rem] p-6 border border-white/5">
-                <h3 className="font-black text-2xl text-blue-500 italic uppercase">{session.patrimonio}</h3>
-                <p className="text-slate-400 text-xs mt-1 uppercase font-bold">{session.cliente}</p>
-                <div className="grid grid-cols-4 gap-2 mt-4">
-                  {session.images.slice(0, 4).map(img => (
-                    <img key={img.id} src={img.url} className="aspect-square object-cover rounded-xl border border-white/10" />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {isProcessing && (
-        <div className="fixed inset-0 z-[400] bg-black/95 backdrop-blur-2xl flex items-center justify-center">
-          <div className="flex flex-col items-center">
-            <Loader2 className="w-20 h-20 text-blue-600 animate-spin mb-6" strokeWidth={3} />
-            <p className="font-black text-2xl uppercase italic tracking-tighter">Processando...</p>
-          </div>
+        <div className="fixed inset-0 z-[400] bg-black/95 flex flex-col items-center justify-center">
+           <Loader2 className="w-16 h-16 text-blue-600 animate-spin mb-4" strokeWidth={3} />
+           <p className="font-black uppercase italic tracking-widest text-sm">Processando...</p>
         </div>
       )}
     </div>
