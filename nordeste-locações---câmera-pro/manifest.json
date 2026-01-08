@@ -11,13 +11,13 @@
   "scope": "/",
   "icons": [
     {
-      "src": "https://nordesteloc.com.br/wp-content/uploads/2024/01/logo-nordeste-white.svg",
-      "sizes": "any",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='120' fill='%232563eb'/%3E%3Cpath d='M144 160c-26.5 0-48 21.5-48 48v160c0 26.5 21.5 48 48 48h224c26.5 0 48-21.5 48-48V208c0-26.5-21.5-48-48-48h-41.4l-14.6-29.3c-7.3-14.5-22.3-22.7-38-22.7H233.9c-15.7 0-30.7 8.2-38 22.7l-14.6 29.3H144zM256 368c-44.2 0-80-35.8-80-80s35.8-80 80-80 80 35.8 80 80-35.8 80-80 80z' fill='%23fff'/%3E%3C/svg%3E",
+      "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "https://nordesteloc.com.br/wp-content/uploads/2024/01/logo-nordeste-white.svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='120' fill='%232563eb'/%3E%3Cpath d='M144 160c-26.5 0-48 21.5-48 48v160c0 26.5 21.5 48 48 48h224c26.5 0 48-21.5 48-48V208c0-26.5-21.5-48-48-48h-41.4l-14.6-29.3c-7.3-14.5-22.3-22.7-38-22.7H233.9c-15.7 0-30.7 8.2-38 22.7l-14.6 29.3H144zM256 368c-44.2 0-80-35.8-80-80s35.8-80 80-80 80 35.8 80 80-35.8 80-80 80z' fill='%23fff'/%3E%3C/svg%3E",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "maskable"

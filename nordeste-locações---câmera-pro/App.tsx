@@ -6,7 +6,7 @@ import CustomModal from './components/CustomModal';
 import { getCurrentLocation } from './services/locationService';
 import { processImage, reprocessWithPatrimonio } from './services/imageProcessor';
 import { LocationData, StampedImage, InspectionSession } from './types';
-import { Loader2, FolderClosed, History, Trash2, X, Camera, User, ChevronRight } from 'lucide-react';
+import { Loader2, FolderClosed, History, Trash2, X, Camera, User, Download, Info } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
@@ -16,16 +16,44 @@ const App: React.FC = () => {
   const [showGallery, setShowGallery] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   const [isPatrimonioModalOpen, setIsPatrimonioModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
+    // Detectar se já está instalado ou rodando como PWA
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+    }
+
+    // Escutar o evento de instalação
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    });
+
+    window.addEventListener('appinstalled', () => {
+      setDeferredPrompt(null);
+      setIsInstalled(true);
+      console.log('PWA instalado com sucesso!');
+    });
+
     const update = async () => setCurrentLocation(await getCurrentLocation());
     update();
     const interval = setInterval(update, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
 
   const handleCapture = async (video: HTMLVideoElement) => {
     if (video.readyState < 2 || video.videoWidth === 0) return;
@@ -105,26 +133,61 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-slate-950 select-none text-white">
       {showIntro ? (
-        <div className="fixed inset-0 bg-slate-950 z-[100] flex flex-col p-10 pt-24 items-center text-center">
-          <div className="w-32 h-32 mb-10 bg-blue-600 rounded-[2.5rem] shadow-[0_20px_50px_rgba(37,99,235,0.3)] flex items-center justify-center">
+        <div className="fixed inset-0 bg-slate-950 z-[100] flex flex-col p-10 pt-24 items-center text-center overflow-y-auto">
+          <div className="w-32 h-32 mb-10 bg-blue-600 rounded-[2.5rem] shadow-[0_20px_50px_rgba(37,99,235,0.3)] flex items-center justify-center shrink-0">
             <Camera size={64} className="text-white" />
           </div>
           <h1 className="text-4xl font-black mb-3 uppercase tracking-tighter italic">Nordeste</h1>
-          <p className="text-slate-500 mb-16 text-xs font-black uppercase tracking-[0.3em]">Câmera Pro de Vistoria</p>
+          <p className="text-slate-500 mb-12 text-xs font-black uppercase tracking-[0.3em]">Câmera Pro de Vistoria</p>
           
-          <button 
-            onClick={() => setShowIntro(false)} 
-            className="w-full py-6 px-10 bg-blue-600 font-black rounded-3xl shadow-2xl active:scale-95 transition-all text-xl uppercase tracking-tighter"
-          >
-            Nova Vistoria
-          </button>
-          
-          <button 
-            onClick={() => setShowHistory(true)} 
-            className="mt-12 w-full py-5 bg-slate-900 border border-white/5 text-slate-400 flex items-center justify-center gap-3 rounded-3xl font-black uppercase text-sm tracking-widest active:scale-95 transition-all"
-          >
-            <History size={20}/> Histórico
-          </button>
+          <div className="w-full space-y-4 mb-12">
+            <button 
+              onClick={() => setShowIntro(false)} 
+              className="w-full py-6 px-10 bg-blue-600 font-black rounded-3xl shadow-2xl active:scale-95 transition-all text-xl uppercase tracking-tighter"
+            >
+              Nova Vistoria
+            </button>
+            
+            <button 
+              onClick={() => setShowHistory(true)} 
+              className="w-full py-5 bg-slate-900 border border-white/5 text-slate-300 flex items-center justify-center gap-3 rounded-3xl font-black uppercase text-sm tracking-widest active:scale-95 transition-all"
+            >
+              <History size={20}/> Histórico
+            </button>
+          </div>
+
+          {/* Prompt de Instalação na Tela Inicial */}
+          {deferredPrompt && (
+            <div className="w-full bg-blue-500/10 border border-blue-500/20 p-6 rounded-[2rem] animate-in fade-in zoom-in duration-500">
+               <div className="flex items-center gap-4 mb-4 text-left">
+                 <div className="bg-blue-600 p-3 rounded-2xl">
+                    <Download size={24} className="text-white" />
+                 </div>
+                 <div>
+                   <h4 className="font-black text-sm uppercase italic tracking-tight">Instalar Aplicativo</h4>
+                   <p className="text-slate-400 text-[10px] leading-tight mt-1">Acesse a câmera mais rápido e use offline.</p>
+                 </div>
+               </div>
+               <button 
+                onClick={handleInstallClick}
+                className="w-full py-4 bg-white text-blue-600 font-black rounded-2xl text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+               >
+                 Instalar Agora
+               </button>
+            </div>
+          )}
+
+          {/* Dica para iOS */}
+          {!deferredPrompt && !isInstalled && /iPhone|iPad|iPod/i.test(navigator.userAgent) && (
+             <div className="w-full bg-slate-900 border border-white/5 p-5 rounded-[2rem] flex items-center gap-4">
+                <div className="bg-white/5 p-3 rounded-2xl text-blue-500">
+                  <Info size={20} />
+                </div>
+                <p className="text-[10px] text-slate-400 text-left leading-relaxed">
+                   Para instalar no iOS: toque em <span className="text-white font-bold">Compartilhar</span> e depois em <span className="text-white font-bold">Adicionar à Tela de Início</span>.
+                </p>
+             </div>
+          )}
         </div>
       ) : (
         <>
@@ -144,6 +207,17 @@ const App: React.FC = () => {
           >
             <History size={32} />
           </button>
+          
+          {/* Pequeno Banner de Instalação Flutuante se estiver na câmera */}
+          {deferredPrompt && !showGallery && (
+             <button 
+              onClick={handleInstallClick}
+              className="absolute top-12 left-1/2 -translate-x-1/2 px-6 py-3 bg-blue-600/90 backdrop-blur-md rounded-full border border-white/20 flex items-center gap-3 animate-in slide-in-from-top duration-500 shadow-2xl active:scale-95"
+             >
+                <Download size={18} />
+                <span className="text-[10px] font-black uppercase tracking-widest">Instalar App</span>
+             </button>
+          )}
         </>
       )}
 
