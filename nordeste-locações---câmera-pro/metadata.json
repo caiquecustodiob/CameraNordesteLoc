@@ -1,0 +1,8 @@
+{
+  "name": "Nordeste Locações - Câmera Pro",
+  "description": "Aplicativo de captura de fotos com carimbo automático de data, hora e localização para vistorias e auditorias.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
