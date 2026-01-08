@@ -12,6 +12,16 @@ export interface StampedImage {
   url: string;
   blob: Blob;
   timestamp: number;
+  location: LocationData;
+  patrimonio?: string;
+}
+
+export interface InspectionSession {
+  id: string;
+  patrimonio: string;
+  date: number;
+  images: StampedImage[];
+  isFinalized: boolean;
 }
 
 export enum CameraMode {

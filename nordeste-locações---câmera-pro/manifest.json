@@ -2,21 +2,25 @@
 {
   "name": "Nordeste Locações Câmera Pro",
   "short_name": "Nordeste Cam",
-  "description": "Câmera corporativa com carimbo de vistorias",
-  "start_url": ".",
+  "description": "Câmera corporativa com carimbo de vistorias e geolocalização",
+  "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
+  "scope": "/",
   "icons": [
     {
-      "src": "https://picsum.photos/192/192",
-      "sizes": "192x192",
-      "type": "image/png"
+      "src": "https://nordesteloc.com.br/wp-content/uploads/2024/01/logo-nordeste-white.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     },
     {
-      "src": "https://picsum.photos/512/512",
+      "src": "https://nordesteloc.com.br/wp-content/uploads/2024/01/logo-nordeste-white.svg",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }

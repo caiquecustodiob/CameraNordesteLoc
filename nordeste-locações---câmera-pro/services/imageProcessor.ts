@@ -1,33 +1,37 @@
 
-import { LocationData } from '../types';
-
-const LOGO_URL = 'https://nordesteloc.com.br/wp-content/uploads/2024/01/logo-nordeste-white.svg';
+import { LocationData, StampedImage } from '../types';
 
 export const processImage = async (
-  videoElement: HTMLVideoElement,
-  location: LocationData
+  source: HTMLVideoElement | HTMLImageElement,
+  location: LocationData,
+  patrimonio?: string
 ): Promise<{ blob: Blob; url: string }> => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   
-  if (!ctx) throw new Error('Could not get canvas context');
+  if (!ctx) throw new Error('Não foi possível obter o contexto do Canvas');
 
-  // Set canvas size to video resolution
-  canvas.width = videoElement.videoWidth;
-  canvas.height = videoElement.videoHeight;
+  // 1. Validar Dimensões
+  let width = 0;
+  let height = 0;
 
-  // Draw the original photo
-  ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+  if (source instanceof HTMLVideoElement) {
+    width = source.videoWidth;
+    height = source.videoHeight;
+  } else {
+    width = source.naturalWidth;
+    height = source.naturalHeight;
+  }
 
-  // Load Logo for Watermark
-  const logo = new Image();
-  logo.crossOrigin = 'anonymous';
-  logo.src = LOGO_URL;
-  
-  await new Promise((resolve) => {
-    logo.onload = resolve;
-    logo.onerror = resolve; // Continue even if logo fails
-  });
+  if (width === 0 || height === 0) {
+    throw new Error('Dimensões da imagem inválidas (0x0). Aguarde a câmera carregar.');
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+
+  // 2. Desenhar a foto original
+  ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
 
   const now = new Date();
   const dateStr = now.toLocaleDateString('pt-BR');
@@ -36,58 +40,92 @@ export const processImage = async (
   const lonStr = location.longitude?.toFixed(6) || '--';
   const locStr = location.error ? location.error : `LAT: ${latStr} | LON: ${lonStr}`;
 
-  // Design Constants based on resolution
-  const margin = canvas.width * 0.03;
-  const fontSizeMain = canvas.width * 0.03;
-  const fontSizeSub = canvas.width * 0.02;
+  const margin = canvas.width * 0.04;
+  const fontSizeMain = Math.max(20, canvas.width * 0.035);
+  const fontSizeSub = Math.max(14, canvas.width * 0.022);
 
-  // 1. Draw a dark gradient/box at the bottom for readability
-  const footerHeight = canvas.height * 0.15;
+  // 3. Fundo Gradiente
+  const footerHeight = canvas.height * 0.22;
   const gradient = ctx.createLinearGradient(0, canvas.height - footerHeight, 0, canvas.height);
   gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  gradient.addColorStop(0.3, 'rgba(0, 0, 0, 0.6)');
-  gradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+  gradient.addColorStop(0.4, 'rgba(0, 0, 0, 0.7)');
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, canvas.height - footerHeight, canvas.width, footerHeight);
 
-  // 2. Draw Stamp Text (Bottom Left)
+  // 4. Estilo do Texto
   ctx.fillStyle = '#FFFFFF';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-  ctx.shadowBlur = 4;
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+  ctx.shadowBlur = 6;
   
-  ctx.font = `bold ${fontSizeMain}px sans-serif`;
-  ctx.fillText('Nordeste Locações', margin, canvas.height - margin - fontSizeMain * 1.5 - fontSizeSub);
-  
+  // Esquerda
+  ctx.textAlign = 'left';
+  let yPosLeft = canvas.height - margin;
   ctx.font = `${fontSizeSub}px sans-serif`;
-  ctx.fillText(`${dateStr} - ${timeStr}`, margin, canvas.height - margin - fontSizeSub - 5);
-  ctx.fillText(locStr, margin, canvas.height - margin);
+  ctx.fillText(locStr, margin, yPosLeft);
+  yPosLeft -= fontSizeSub + 8;
+  ctx.fillText(`${dateStr} - ${timeStr}`, margin, yPosLeft);
+  yPosLeft -= fontSizeSub + 12;
+  ctx.font = `bold ${fontSizeMain}px sans-serif`;
+  ctx.fillText('NORDESTE LOCAÇÕES', margin, yPosLeft);
 
-  // 3. Draw Watermark Logo (Bottom Right)
-  if (logo.complete && logo.naturalWidth > 0) {
-    const logoRatio = logo.width / logo.height;
-    const logoWidth = canvas.width * 0.18;
-    const logoHeight = logoWidth / logoRatio;
-    
-    ctx.globalAlpha = 0.6; // Opacity for watermark
-    ctx.drawImage(
-      logo, 
-      canvas.width - logoWidth - margin, 
-      canvas.height - logoHeight - margin, 
-      logoWidth, 
-      logoHeight
-    );
-    ctx.globalAlpha = 1.0;
+  // Direita (Patrimônio)
+  if (patrimonio) {
+    ctx.textAlign = 'right';
+    ctx.font = `bold ${fontSizeMain}px sans-serif`;
+    ctx.fillStyle = '#FBBF24';
+    ctx.fillText(`PATRIMÔNIO: ${patrimonio}`, canvas.width - margin, canvas.height - margin);
   }
 
-  // Convert to Blob
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      if (blob) {
-        resolve({
-          blob,
-          url: URL.createObjectURL(blob)
-        });
-      }
-    }, 'image/jpeg', 0.9);
+  // 5. Exportação com tratamento de erro
+  return new Promise((resolve, reject) => {
+    try {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve({ blob, url: URL.createObjectURL(blob) });
+        } else {
+          // Fallback para toDataURL caso toBlob falhe (comum em sandboxes)
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          fetch(dataUrl)
+            .then(res => res.blob())
+            .then(b => resolve({ blob: b, url: URL.createObjectURL(b) }))
+            .catch(() => reject(new Error('Falha total na geração da imagem')));
+        }
+      }, 'image/jpeg', 0.85);
+    } catch (e) {
+      reject(new Error('Erro de segurança ao processar imagem (Canvas Tainted)'));
+    }
   });
+};
+
+export const reprocessWithPatrimonio = async (
+  image: StampedImage,
+  patrimonio: string
+): Promise<StampedImage> => {
+  const imgElement = new Image();
+  
+  // Converter Blob para DataURL antes de carregar na imagem
+  // Isso evita erros de CORS/Segurança que ocorrem com URL.createObjectURL em sandboxes
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('Erro ao ler blob da imagem'));
+    reader.readAsDataURL(image.blob);
+  });
+
+  await new Promise((resolve, reject) => {
+    imgElement.onload = resolve;
+    imgElement.onerror = () => reject(new Error('Erro ao carregar imagem para reprocessamento'));
+    imgElement.src = dataUrl;
+    setTimeout(() => reject(new Error('Timeout no carregamento da imagem')), 10000);
+  });
+  
+  const result = await processImage(imgElement, image.location, patrimonio);
+  
+  return {
+    ...image,
+    blob: result.blob,
+    url: result.url,
+    patrimonio
+  };
 };

@@ -15,11 +15,12 @@ root.render(
   </React.StrictMode>
 );
 
-// Register basic service worker if in production-like environment
-if ('serviceWorker' in navigator) {
+// Registro do Service Worker apenas se suportado e fora de ambientes restritos (como preview sandboxes)
+// Em produção na Vercel, isso funcionará perfeitamente.
+if ('serviceWorker' in navigator && window.location.hostname !== 'ai.studio') {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(err => {
-      console.log('ServiceWorker registration ignored (typical for local envs)', err);
-    });
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registrado!', reg.scope))
+      .catch(err => console.log('Falha ao registrar Service Worker:', err));
   });
 }

@@ -3,21 +3,37 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Nordeste Locações - Câmera Pro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="manifest" href="manifest.json">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Nordeste Cam">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#0f172a">
+    
+    <!-- Icons -->
+    <link rel="apple-touch-icon" href="https://nordesteloc.com.br/wp-content/uploads/2024/01/logo-nordeste-white.svg">
+    <link rel="icon" type="image/svg+xml" href="https://nordesteloc.com.br/wp-content/uploads/2024/01/logo-nordeste-white.svg">
+    
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
     <style>
         body {
             overscroll-behavior-y: contain;
             background-color: #0f172a;
             color: #f8fafc;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0;
+            padding: 0;
         }
         canvas {
             display: none;
         }
-        /* Fix for mobile height issues */
+        /* Garantir altura total em dispositivos móveis */
         .h-screen-safe {
             height: 100vh;
             height: -webkit-fill-available;
@@ -29,7 +45,8 @@
     "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "jszip": "https://esm.sh/jszip@3.10.1"
   }
 }
 </script>
