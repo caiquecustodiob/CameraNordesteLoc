@@ -1,0 +1,8 @@
+{
+  "name": "Nordeste Pro - Câmera de Vistoria",
+  "description": "Ferramenta corporativa para captura de evidências fotográficas com carimbo de metadados GPS e data/hora invioláveis.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
